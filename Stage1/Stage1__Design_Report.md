@@ -2,7 +2,6 @@
 ## MealMind: AI Smart Recipe & Meal Planning Agent
 
 | | |
-|---|---|
 | **Student** | _Abhishek Ramessur_ |
 | **Student ID** | _219433564_ |
 | **Repository** | _https://github.com/AbhiRamessur/EECS3311-MealPlanning-Agent/_ |
@@ -226,10 +225,7 @@ The AI model interacts with the rest of the software system through a structured
 
 ## 2.1 Class Diagram
 
-
-## Section 3: System Design & Architectural Modeling
-
-### 3.1 Design Pattern Specifications
+### Design Pattern Specifications
 
 The `MealMind` architecture integrates 5 object-oriented design patterns to solve specific design challenges, ensuring loose coupling, high extensibility, and maintainability.
 

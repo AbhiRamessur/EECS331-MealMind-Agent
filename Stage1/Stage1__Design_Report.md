@@ -2,9 +2,10 @@
 ## MealMind: AI Smart Recipe & Meal Planning Agent
 
 | | |
+|---|---|
 | **Student** | _Abhishek Ramessur_ |
 | **Student ID** | _219433564_ |
-| **Repository** | _https://github.com/AbhiRamessur/EECS3311-MealPlanning-Agent/_ |
+| **Repository** | _[https://github.com/AbhiRamessur/EECS3311-MealMind-Agent/](https://github.com/AbhiRamessur/EECS331-MealMind-Agent/)_ |
 
 ---
 

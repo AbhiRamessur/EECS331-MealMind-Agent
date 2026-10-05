@@ -242,7 +242,7 @@ The `MealMind` architecture integrates 5 object-oriented design patterns to solv
 
 ## 2.2 Use Case Diagram and Descriptions
 
-#### Use Case Diagram:  
+#### Use Case Diagram: [`diagrams/MealMind_Use_Case_Diagram.svg`](diagrams/MealMind_Use_Case_Diagram.svg) 
 
 ### Major Use Case Descriptions:
 
@@ -283,6 +283,8 @@ The `MealMind` architecture integrates 5 object-oriented design patterns to solv
   * *4a. Constraint Violation*: Error feedback is looped back into the agent to regenerate a safe variant (max 3 tries).
 * **Postconditions**: A custom recipe is generated, validated, and displayed in a preview modal.
 * **Related Feature(s)**: F04 (Generate AI Recipe), F01 (Manage Dietary Profile)
+
+---
 
 #### UC05 — Generate Weekly Meal Plan
 * **Use Case ID**: UC05
@@ -334,9 +336,32 @@ The `MealMind` architecture integrates 5 object-oriented design patterns to solv
 
 ---
 
+#### UC11 — Generate Shopping List
+* **Use Case ID**: UC11
+* **Use Case Name**: Generate Shopping List
+* **Actor(s)**: User, ShoppingListGenerator (Observer), MealPlan, Pantry
+* **Goal**: Automatically compute missing ingredients by comparing active meal plan requirements against current pantry inventory using the Observer pattern.
+* **Preconditions**: 
+  * An active `MealPlan` exists for the current week.
+  * Current `Pantry` inventory stock is populated.
+* **Trigger**: User opens the Shopping List Tab and clicks "Generate Shopping List".
+* **Main Success Scenario**:
+  1. User clicks *Generate Shopping List*.
+  2. `AgentController` calls `AgentFacade.generateShoppingList()`.
+  3. `ShoppingListGenerator` (acting as an **Observer**) receives notification state change from the active `MealPlan` and `Pantry` subjects.
+  4. Generator computes the difference between required meal ingredients and available pantry stock using the **Composite Pattern** aggregation.
+  5. Missing quantities are merged by category, unit-normalized, and estimated costs are calculated.
+  6. Consolidated shopping list is rendered on the UI.
+* **Alternative/Exception Flows**:
+  * *4a. Pantry Inventory is Empty*: System treats all meal plan ingredients as missing and generates a full list of required items with an advisory warning.
+* **Postconditions**: A consolidated, priced `ShoppingList` is generated, persisted locally, and displayed on screen.
+* **Related Feature(s)**: F11 (Generate Shopping List), F05 (Generate Weekly Meal Plan), F02 (Manage Pantry Inventory)
+
+--- 
+
 ### Summary of Supporting Use Cases
 
-While detailed step-by-step specifications are documented above for the four major system-driving use cases (`UC02`, `UC04`, `UC05`, and `UC06`), the remaining system interactions are summarized in the table below. 
+While detailed step-by-step specifications are documented above for the five major system-driving use cases (`UC02`, `UC04`, `UC05`, `UC06`, and `UC11`), the remaining system interactions are summarized in the table below. 
 
 > **Note**: The following use cases represent supporting, auxiliary, or CRUD-based features that complement the core architecture. They are implemented using standard domain logic or straightforward UI-to-model data bindings without invoking complex multi-step ReAct agent loops.
 
@@ -348,7 +373,18 @@ While detailed step-by-step specifications are documented above for the four maj
 | **UC08** | Scale Recipe Servings | User, CommandHistory | Dynamically recalculates ingredient quantities based on user serving size adjustments. | F08 |
 | **UC09** | Analyze Nutrition & Commentary | User, AI Model | Aggregates weekly macros via the Composite pattern and displays AI commentary. | F09 |
 | **UC10** | Plan Expiring Leftovers | User, AI Model | Creates targeted zero-waste meal snippets for inventory items nearing expiry. | F10 |
-| **UC11** | Generate Shopping List | User | Computes missing ingredients between the active meal plan and pantry stock via the Observer pattern. | F11 |
 | **UC12** | Rate & Favorite Recipes | User | Saves user recipe ratings and favorites locally for quick filtering. | F12 |
 
-  
+ ## 2.3 Sequence Diagrams
+
+### 3.3 System Sequence Diagrams
+
+The matrix below summarizes the dynamic message passing, design pattern collaborations, and core feature mappings for the system's major use cases.
+
+| Sequence ID | Use Case Target | Core Collaboration & Design Pattern | Mapped Feature(s) | Sequence Diagram |
+| :--- | :--- | :--- | :--- | :--- |
+| **SD02** | **UC02**<br>(Manage Pantry) | `MainController` -> `AgentFacade` -> `AddPantryItemCommand` -> `Pantry` model.<br><br>*Pattern: Command Pattern* | **F02** | [`diagrams/MealMind_Seq_UC02`](diagrams/MealMind_Seq_UC02.svg) |
+| **SD04** | **UC04**<br>(Generate AI Recipe) | `AgentController` -> `LLMClient` -> `ConstraintValidator`. Handles automated JSON repair and safety checks.<br><br>*Pattern: Strategy / Validation Loop* | **F04** | [`diagrams/MealMind_Seq_UC04`](diagrams/MealMind_Seq_UC04.svg) |
+| **SD05** | **UC05**<br>(Generate Meal Plan) | `AgentFacade` -> `MealPlanningAgent` -> `PlanningStrategy` -> `Composite` plan hierarchy -> `ConstraintValidator`.<br><br>*Pattern: Strategy & Composite Patterns* | **F05**, **F03** | [`diagrams/MealMind_Seq_UC05`](diagrams/MealMind_Seq_UC05.svg) |
+| **SD06** | **UC06**<br>(Modify via NL) | `AgentController` -> `LLMClient` -> `ReplaceMealCommand` -> `CommandHistory` with undo/redo support.<br><br>*Pattern: Command Pattern* | **F06**, **F08** | [`diagrams/MealMind_Seq_UC06`](diagrams/MealMind_Seq_UC06.svg) |
+| **SD11** | **UC11**<br>(Generate Shopping List) | `MealPlan` & `Pantry` notify `ShoppingListGenerator` via observer subscription to compute missing items.<br><br>*Pattern: Observer Pattern* | **F11**, **F05**, **F02** | [`diagrams/MealMind_Seq_UC11`](diagrams/MealMind_Seq_UC11.svg) |

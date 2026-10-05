@@ -226,7 +226,7 @@ The AI model interacts with the rest of the software system through a structured
 
 ## 2.1 Class Diagram
 
-### Class Diagram: 
+#### Class Diagram: [`diagrams/MealMind_Class_Diagram.svg`](diagrams/MealMind_Class_Diagram.svg)
 
 ### Design Pattern Specifications
 
@@ -242,6 +242,113 @@ The `MealMind` architecture integrates 5 object-oriented design patterns to solv
 
 ## 2.2 Use Case Diagram and Descriptions
 
-### Use Case Diagram: 
+#### Use Case Diagram:  
 
-### Use Case Descriptions:
+### Major Use Case Descriptions:
+
+#### UC02 — Manage Pantry Inventory
+* **Use Case ID**: UC02
+* **Use Case Name**: Manage Pantry Inventory
+* **Actor(s)**: User, Pantry Model, CommandHistory
+* **Goal**: Add, update, or remove ingredients in the user's local pantry inventory to drive smart recipe recommendations.
+* **Preconditions**: Application is running with an active user session.
+* **Trigger**: User navigates to the Pantry Tab and clicks "Add Item".
+* **Main Success Scenario**:
+  1. User inputs item name, quantity, unit type, and expiry date.
+  2. `AgentController.addPantryItem()` creates an `AddPantryItemCommand` (**Command Pattern**).
+  3. `Pantry` model receives the item; measurement units are normalized, and duplicate entries are merged.
+  4. **Observer Pattern** notifies active views and triggers shopping list regeneration.
+* **Alternative/Exception Flows**:
+  * *2a. Invalid Quantity (<= 0) or Incompatible Unit*: Validation rejects the input immediately, displaying an inline error message without modifying state.
+* **Postconditions**: Pantry inventory state is updated, merged, and saved locally.
+* **Related Feature(s)**: F02 (Manage Pantry Inventory), F11 (Generate Shopping List)
+
+---
+
+#### UC04 — Generate AI Recipe
+* **Use Case ID**: UC04
+* **Use Case Name**: Generate AI Recipe
+* **Actor(s)**: User, AI Model Service, ConstraintValidator
+* **Goal**: Create a custom, allergen-safe recipe on-the-fly using generative AI prompts.
+* **Preconditions**: User profile is configured with active allergen blacklists.
+* **Trigger**: User enters a custom recipe prompt in the generator bar and clicks submit.
+* **Main Success Scenario**:
+  1. User enters a prompt (*"High-protein vegan pasta under 20 mins"*).
+  2. `AgentController.generateRecipe()` dispatches prompt and profile constraints to `LLMClient`.
+  3. LLM returns a structured JSON recipe payload matching the strict schema.
+  4. `ConstraintValidator` checks ingredients against user allergen blacklists.
+  5. Recipe preview dialog opens, allowing the user to save the recipe to local storage.
+* **Alternative/Exception Flows**:
+  * *3a. Malformed JSON*: Triggers an internal automated repair prompt to the LLM (max 1 retry).
+  * *4a. Constraint Violation*: Error feedback is looped back into the agent to regenerate a safe variant (max 3 tries).
+* **Postconditions**: A custom recipe is generated, validated, and displayed in a preview modal.
+* **Related Feature(s)**: F04 (Generate AI Recipe), F01 (Manage Dietary Profile)
+
+#### UC05 — Generate Weekly Meal Plan
+* **Use Case ID**: UC05
+* **Use Case Name**: Generate Weekly Meal Plan
+* **Actor(s)**: User (Student / Busy Professional), AI Model Service (OpenAI GPT-4o / Ollama), ConstraintValidator
+* **Goal**: Automatically generate a balanced, personalized weekly meal plan that respects budget limits, dietary restrictions, and utilizes current pantry items.
+* **Preconditions**: 
+  * User profile exists with dietary restrictions, calorie targets, and weekly budget limits.
+  * Pantry inventory contains current stock items.
+* **Trigger**: User clicks the "Generate Plan" button in the Plan Tab after configuring parameters.
+* **Main Success Scenario**:
+  1. User selects planning parameters (duration, meals per day, planning strategy) and clicks *Generate Plan*.
+  2. `AgentController` calls `AgentFacade.generatePlan()`, instantiating the selected algorithm via the **Strategy Pattern**.
+  3. The ReAct agent execution loop invokes `PantryTool` and `RecipeSearchTool` to query inventory and local recipes.
+  4. The LLM selects recipes via tool calls, constructing a multi-day candidate `MealPlan` using the **Composite Pattern**.
+  5. `ConstraintValidator` runs deterministic checks against macro totals and allergen blacklists.
+  6. The validated plan is saved, and registered observers (**Observer Pattern**) trigger UI updates on `CalendarView`.
+* **Alternative/Exception Flows**:
+  * *4a. LLM Network Timeout / Ollama Unreachable*: System attempts one automatic retry, then prompts the user to switch to the local rule-based fallback generator.
+  * *5a. Constraint Violation Detected*: Validation failure details are fed back into the agent loop for automated self-correction before rendering.
+* **Postconditions**: 
+  * A structured `MealPlan` is created, validated, persisted, and rendered onto the weekly calendar UI.
+  * Shopping list and nutrition totals are automatically recalculated.
+* **Related Feature(s)**: F05 (Generate Weekly Meal Plan), F03 (Recommend Recipes from Pantry)
+
+---
+
+#### UC06 — Modify Plan via Natural Language
+* **Use Case ID**: UC06
+* **Use Case Name**: Modify Plan via Natural Language
+* **Actor(s)**: User, AI Model Service, CommandHistory
+* **Goal**: Modify an existing meal slot dynamically using natural language chat commands while maintaining undo/redo capabilities.
+* **Preconditions**: An active `MealPlan` currently exists on the calendar view.
+* **Trigger**: User types a text instruction into the agent chat box and hits enter.
+* **Main Success Scenario**:
+  1. User types a modification instruction (*"Swap Tuesday dinner for a quick 15-minute meal"*).
+  2. `AgentController.modifyPlan()` passes the instruction and current plan context to `LLMClient`.
+  3. The LLM parses the natural language request and returns a structured replacement command payload.
+  4. System instantiates a `ReplaceMealCommand` (**Command Pattern**).
+  5. `ConstraintValidator` verifies the new meal satisfies all user safety rules.
+  6. `CommandHistory` executes the command, updates the `MealPlan`, and observers automatically refresh the calendar view.
+* **Alternative/Exception Flows**:
+  * *3a. Ambiguous Instruction*: The system prompts the user with a clarifying question (*"Which day's dinner would you like to swap?"*).
+  * *5a. Safety Violation*: Command execution is aborted, the meal plan remains unchanged, and an explanatory refusal message is displayed.
+* **Postconditions**: 
+  * The target meal slot is successfully modified.
+  * The action is pushed to `CommandHistory` to support undo/redo.
+* **Related Feature(s)**: F06 (Modify Plan via Natural Language), F08 (Scale Recipe Servings)
+
+---
+
+### Summary of Supporting Use Cases
+
+While detailed step-by-step specifications are documented above for the four major system-driving use cases (`UC02`, `UC04`, `UC05`, and `UC06`), the remaining system interactions are summarized in the table below. 
+
+> **Note**: The following use cases represent supporting, auxiliary, or CRUD-based features that complement the core architecture. They are implemented using standard domain logic or straightforward UI-to-model data bindings without invoking complex multi-step ReAct agent loops.
+
+| Use Case ID | Use Case Name | Primary Actor | Primary Purpose / Goal | Related Feature(s) |
+| :--- | :--- | :--- | :--- | :--- |
+| **UC01** | Manage Dietary Profile | User | Updates user allergen blacklists, macro targets, and dietary preferences. | F01 |
+| **UC03** | Recommend Recipes from Pantry | User, AI Model | Suggests high-affinity recipes utilizing items currently tracked in inventory. | F03 |
+| **UC07** | Suggest Ingredient Substitution | User, AI Model | Recommends safe, context-aware alternative ingredients for active recipes. | F07 |
+| **UC08** | Scale Recipe Servings | User, CommandHistory | Dynamically recalculates ingredient quantities based on user serving size adjustments. | F08 |
+| **UC09** | Analyze Nutrition & Commentary | User, AI Model | Aggregates weekly macros via the Composite pattern and displays AI commentary. | F09 |
+| **UC10** | Plan Expiring Leftovers | User, AI Model | Creates targeted zero-waste meal snippets for inventory items nearing expiry. | F10 |
+| **UC11** | Generate Shopping List | User | Computes missing ingredients between the active meal plan and pantry stock via the Observer pattern. | F11 |
+| **UC12** | Rate & Favorite Recipes | User | Saves user recipe ratings and favorites locally for quick filtering. | F12 |
+
+  

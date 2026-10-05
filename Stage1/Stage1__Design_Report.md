@@ -226,6 +226,8 @@ The AI model interacts with the rest of the software system through a structured
 
 ## 2.1 Class Diagram
 
+### Class Diagram: 
+
 ### Design Pattern Specifications
 
 The `MealMind` architecture integrates 5 object-oriented design patterns to solve specific design challenges, ensuring loose coupling, high extensibility, and maintainability.

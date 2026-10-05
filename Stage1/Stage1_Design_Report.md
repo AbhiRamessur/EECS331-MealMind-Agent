@@ -5,7 +5,7 @@
 |---|---|
 | **Student** | _Abhishek Ramessur_ |
 | **Student ID** | _219433564_ |
-| **Repository** | _[https://github.com/AbhiRamessur/EECS3311-MealMind-Agent/](https://github.com/AbhiRamessur/EECS331-MealMind-Agent/)_ |
+| **Repository** | _[https://github.com/AbhiRamessur/EECS3311-MealMind-Agent/](https://github.com/AbhiRamessur/EECS3311-MealMind-Agent/)_ |
 
 ---
 

@@ -377,8 +377,6 @@ While detailed step-by-step specifications are documented above for the five maj
 
  ## 2.3 Sequence Diagrams
 
-### 3.3 System Sequence Diagrams
-
 The matrix below summarizes the dynamic message passing, design pattern collaborations, and core feature mappings for the system's major use cases.
 
 | Sequence ID | Use Case Target | Core Collaboration & Design Pattern | Mapped Feature(s) | Sequence Diagram |
@@ -388,3 +386,222 @@ The matrix below summarizes the dynamic message passing, design pattern collabor
 | **SD05** | **UC05**<br>(Generate Meal Plan) | `AgentFacade` -> `MealPlanningAgent` -> `PlanningStrategy` -> `Composite` plan hierarchy -> `ConstraintValidator`.<br><br>*Pattern: Strategy & Composite Patterns* | **F05**, **F03** | [`diagrams/MealMind_Seq_UC05`](diagrams/MealMind_Seq_UC05.png) |
 | **SD06** | **UC06**<br>(Modify via NL) | `AgentController` -> `LLMClient` -> `ReplaceMealCommand` -> `CommandHistory` with undo/redo support.<br><br>*Pattern: Command Pattern* | **F06**, **F08** | [`diagrams/MealMind_Seq_UC06`](diagrams/MealMind_Seq_UC06.png) |
 | **SD11** | **UC11**<br>(Generate Shopping List) | `MealPlan` & `Pantry` notify `ShoppingListGenerator` via observer subscription to compute missing items.<br><br>*Pattern: Observer Pattern* | **F11**, **F05**, **F02** | [`diagrams/MealMind_Seq_UC11`](diagrams/MealMind_Seq_UC11.png) |
+
+## 3 Feature-to-Design Traceability
+
+The traceability matrix below maps every system feature (`F01` through `F12`) directly to its implementing classes, core methods, execution use cases, sequence diagrams, and design patterns.
+
+| Feature ID | Description | Type | Related Use Case | Classes | Key Methods | Sequence Diagram | Design Pattern(s) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **F01** | Manage Dietary Profile | Deterministic | UC01 | `MainController`, `UserProfileModel`, `UserProfileRepository` | `updateProfile()`, `saveBlacklist()` | SD01 *(Supporting)* | Observer |
+| **F02** | Manage Pantry Inventory | Deterministic | UC02 | `MainController`, `AgentFacade`, `AddPantryItemCommand`, `Pantry`, `ShoppingListGenerator` | `addPantryItem()`, `addItem()`, `normalizeUnits()` | SD02 | Command, Observer |
+| **F03** | Recommend Recipes from Pantry | AI/Hybrid | UC03 | `AgentFacade`, `MealPlanningAgent`, `PantryTool`, `RecipeSearchTool` | `queryInventory()`, `findMatchingRecipes()` | SD05 | Strategy |
+| **F04** | Generate AI Recipe | AI/Hybrid | UC04 | `AgentController`, `AgentFacade`, `LLMClient`, `ConstraintValidator` | `executeRecipeGeneration()`, `validateAgainstBlacklists()` | SD04 | Strategy, Validation Loop |
+| **F05** | Generate Weekly Meal Plan | AI/Hybrid | UC05 | `AgentFacade`, `MealPlanningAgent`, `PlanningStrategy`, `ConstraintValidator`, `MealPlan` | `generatePlan()`, `runPlanningLoop()`, `validateMacrosAndAllergens()` | SD-05 | Strategy, Composite, Observer |
+| **F06** | Modify Plan via Natural Language | AI/Hybrid | UC06 | `AgentController`, `LLMClient`, `ReplaceMealCommand`, `CommandHistory`, `MealPlan` | `parseModification()`, `updateMealSlot()`, `pushAndExecute()` | SD06 | Command |
+| **F07** | Suggest Ingredient Substitution | AI/Hybrid | UC07 | `AgentController`, `LLMClient`, `SubstitutionTool` | `suggestSubstitutions()`, `queryAI()` | SD04 *(Supporting)* | Strategy |
+| **F08** | Scale Recipe Servings | Deterministic | UC08 | `Recipe`, `IngredientScaler`, `CommandHistory` | `scaleServings()`, `recalculateQuantities()` | SD06 *(Supporting)* | Command |
+| **F09** | Analyze Nutrition & Commentary | AI/Hybrid | UC09 | `MealPlan`, `NutritionAggregator`, `LLMClient` | `aggregateMacros()`, `generateCommentary()` | SD05 *(Supporting)* | Composite |
+| **F10** | Plan Expiring Leftovers | AI/Hybrid | UC10 | `Pantry`, `MealPlanningAgent`, `ExpirationAnalyzer` | `getExpiringItems()`, `generateZeroWastePlan()` | SD05 *(Supporting)* | Strategy |
+| **F11** | Generate Shopping List | Deterministic | UC11 | `MealPlan`, `Pantry`, `ShoppingListGenerator`, `ShoppingList` | `getRequiredIngredients()`, `compareAgainstPantry()` | SD11 | Observer, Composite |
+| **F12** | Rate & Favorite Recipes | Deterministic | UC12 | `RecipeController`, `RecipeRepository`, `FavoriteList` | `saveFavorite()`, `updateRating()` | SD02 *(Supporting)* | Facade |
+
+## 4 Detailed Feature Realization
+
+Below is the narrative explanation for how each of the twelve features is realized across the system architecture, detailing the related use cases, sequence diagrams, participating classes, key methods, and runtime execution flow.
+
+---
+
+### F01 — Manage Dietary Profile
+* **Related Use Case:** UC01 — Manage Dietary Profile
+* **Related Sequence Diagram:** SD-01 *(Supporting)*
+* **Classes involved:**
+  * `MainController` — captures dietary restrictions, allergies, and preference adjustments from the user interface.
+  * `UserProfileModel` — encapsulates user profile state and active blacklists.
+  * `UserProfileRepository` — handles data persistence for user preferences.
+* **Important methods:**
+  * `MainController.updateProfile()`
+  * `UserProfileModel.setPreferences()`
+  * `UserProfileRepository.saveBlacklist()`
+* **Execution:** When the user updates their dietary preferences or ingredient blacklists in the settings view, `MainController.updateProfile()` receives the input. The controller updates the local `UserProfileModel` state, which subsequently triggers persistence through `UserProfileRepository.saveBlacklist()`, notifying observers of the updated constraints.
+
+---
+
+### F02 — Manage Pantry Inventory
+* **Related Use Case:** UC02 — Manage Pantry Inventory
+* **Related Sequence Diagram:** SD-02
+* **Classes involved:**
+  * `MainController` — captures pantry item additions, updates, or removals.
+  * `AgentFacade` — coordinates pantry operations.
+  * `AddPantryItemCommand` — encapsulates the pantry modification action for undo/redo support.
+  * `Pantry` — maintains the active collection of ingredient inventory items.
+  * `ShoppingListGenerator` — observes inventory changes to update missing item requirements.
+* **Important methods:**
+  * `MainController.addPantryItem()`
+  * `AgentFacade.addPantryItem()`
+  * `AddPantryItemCommand.execute()`
+  * `Pantry.addItem()`
+  * `Pantry.normalizeUnits()`
+* **Execution:** When the user enters a new pantry item and clicks Add, `MainController` delegates the call to `AgentFacade`. The facade instantiates an `AddPantryItemCommand`, which adds the item to the `Pantry` model. The model automatically normalizes units and merges duplicates. The command is pushed to the history stack, and observers like `ShoppingListGenerator` are notified to recalculate shopping requirements.
+
+---
+
+### F03 — Recommend Recipes from Pantry
+* **Related Use Case:** UC03 — Recommend Recipes from Pantry
+* **Related Sequence Diagram:** SD-05
+* **Classes involved:**
+  * `AgentFacade` — coordinates inventory-based recipe recommendations.
+  * `MealPlanningAgent` — executes the recipe matching logic.
+  * `PantryTool` — queries current inventory state.
+  * `RecipeSearchTool` — searches available recipe databases matching inventory items.
+* **Important methods:**
+  * `AgentFacade.recommendRecipes()`
+  * `MealPlanningAgent.queryInventory()`
+  * `PantryTool.fetchCurrentStock()`
+  * `RecipeSearchTool.findMatchingRecipes()`
+* **Execution:** When the user requests recipe recommendations based on current stock, `AgentFacade` triggers `MealPlanningAgent`. The agent uses `PantryTool` to inspect the available inventory items and invokes `RecipeSearchTool` via the strategy pattern to filter and return matching recipes that minimize food waste.
+
+---
+
+### F04 — Generate AI Recipe
+* **Related Use Case:** UC04 — Generate AI Recipe
+* **Related Sequence Diagram:** SD-04
+* **Classes involved:**
+  * `AgentController` — coordinates the recipe generation request.
+  * `AgentFacade` — acts as the entry point from the UI.
+  * `LLMClient` — handles external communication with the language model.
+  * `ConstraintValidator` — verifies generated JSON against dietary restrictions and safety blacklists.
+* **Important methods:**
+  * `AgentFacade.generateRecipe()`
+  * `AgentController.executeRecipeGeneration()`
+  * `LLMClient.requestRecipeJSON()`
+  * `ConstraintValidator.validateAgainstBlacklists()`
+* **Execution:** The user submits a recipe prompt. `AgentFacade` passes the request to `AgentController`, which calls `LLMClient` to obtain a structured JSON recipe payload. If the response contains malformed JSON or constraint violations, the controller triggers automated repair prompts and validation loops via `ConstraintValidator` before rendering the safe recipe preview.
+
+---
+
+### F05 — Generate Weekly Meal Plan
+* **Related Use Case:** UC05 — Generate Weekly Meal Plan
+* **Related Sequence Diagram:** SD-05
+* **Classes involved:**
+  * `AgentFacade` — orchestrates plan generation.
+  * `MealPlanningAgent` — executes multi-step ReAct planning loops.
+  * `PlanningStrategy` — implements different meal planning algorithms (e.g., budget-focused, macro-focused).
+  * `ConstraintValidator` — ensures nutritional and allergen compliance.
+  * `MealPlan` — constructs the composite meal plan hierarchy.
+* **Important methods:**
+  * `AgentFacade.generatePlan()`
+  * `MealPlanningAgent.runPlanningLoop()`
+  * `PlanningStrategy.generateCandidatePlan()`
+  * `ConstraintValidator.validateMacrosAndAllergens()`
+* **Execution:** Upon configuring planning parameters, `AgentFacade` initiates `MealPlanningAgent`. The agent selects a concrete `PlanningStrategy` and runs a multi-step execution loop, querying tool managers. A candidate plan is built as a composite hierarchy, validated against macro and allergen rules by `ConstraintValidator`, persisted, and broadcast to observers to update the UI calendar view.
+
+---
+
+### F06 — Modify Plan via Natural Language</h4>
+* **Related Use Case:** UC06 — Modify Plan via Natural Language
+* **Related Sequence Diagram:** SD-06
+* **Classes involved:**
+  * `AgentController` — parses conversational modification instructions.
+  * `LLMClient` — interprets natural language intent into structured command payloads.
+  * `ReplaceMealCommand` — encapsulates slot replacement logic with command pattern support.
+  * `CommandHistory` — manages undo/redo execution stacks.
+  * `MealPlan` — updates internal meal slot assignments.
+* **Important methods:**
+  * `AgentController.parseModification()`
+  * `LLMClient.requestCommandPayload()`
+  * `ReplaceMealCommand.execute()`
+  * `CommandHistory.pushAndExecute()`
+* **Execution:** When the user types a natural language change (e.g., "swap Tuesday dinner with pasta"), `AgentController` asks `LLMClient` to parse the intent into action metadata. If valid and safe, a `ReplaceMealCommand` is pushed to `CommandHistory` and executed, modifying the `MealPlan` and triggering observer updates to refresh the calendar.
+
+---
+
+### F07 — Suggest Ingredient Substitution
+* **Related Use Case:** UC07 — Suggest Ingredient Substitution
+* **Related Sequence Diagram:** SD-04 *(Supporting)*
+* **Classes involved:**
+  * `AgentController` — handles substitution requests.
+  * `LLMClient` — communicates with the LLM to query culinary alternatives.
+  * `SubstitutionTool` — formats ingredient constraint queries.
+* **Important methods:**
+  * `AgentController.suggestSubstitutions()`
+  * `LLMClient.queryAI()`
+  * `SubstitutionTool.findAlternatives()`
+* **Execution:** When a user selects an ingredient to replace, `AgentController` invokes `SubstitutionTool`. The tool queries `LLMClient` with context regarding dietary restrictions and pantry stock, returning safe, chemically and culinarily equivalent ingredient substitutions.
+
+---
+
+### F08 — Scale Recipe Servings
+* **Related Use Case:** UC08 — Scale Recipe Servings
+* **Related Sequence Diagram:** SD-06 *(Supporting)*
+* **Classes involved:**
+  * `Recipe` — holds ingredient measurements and baseline serving counts.
+  * `IngredientScaler` — computes proportional scaling factors.
+  * `CommandHistory` — records scaling actions for undo operations.
+* **Important methods:**
+  * `Recipe.getIngredients()`
+  * `IngredientScaler.scaleServings()`
+  * `CommandHistory.push()`
+* **Execution:** When the user adjusts the serving size slider on a recipe view, `IngredientScaler` calculates the mathematical ratio relative to the base recipe. It updates ingredient quantities proportionally within the `Recipe` instance and registers the change in `CommandHistory`.
+
+---
+
+### F09 — Analyze Nutrition & Commentary
+* **Related Use Case:** UC09 — Analyze Nutrition & Commentary
+* **Related Sequence Diagram:** SD-05 *(Supporting)*
+* **Classes involved:**
+  * `MealPlan` — provides access to constituent recipes across days and slots.
+  * `NutritionAggregator` — sums macronutrients and micronutrients across the plan.
+  * `LLMClient` — generates friendly dietary commentary and insights.
+* **Important methods:**
+  * `MealPlan.getConstituentRecipes()`
+  * `NutritionAggregator.aggregateMacros()`
+  * `LLMClient.generateCommentary()`
+* **Execution:** The system accesses the composite `MealPlan` structure, passing aggregated ingredient and recipe data to `NutritionAggregator`. Once totals are computed, `LLMClient` is called to generate natural language nutritional feedback and suggestions.
+
+---
+
+### F10 — Plan Expiring Leftovers
+* **Related Use Case:** UC10 — Plan Expiring Leftovers
+* **Related Sequence Diagram:** SD-05 *(Supporting)*
+* **Classes involved:**
+  * `Pantry` — tracks item expiration dates.
+  * `MealPlanningAgent` — incorporates waste-reduction heuristics.
+  * `ExpirationAnalyzer` — filters and prioritizes items nearing expiration.
+* **Important methods:**
+  * `Pantry.getExpiringItems()`
+  * `ExpirationAnalyzer.sortByUrgency()`
+  * `MealPlanningAgent.generateZeroWastePlan()`
+* **Execution:** `ExpirationAnalyzer` scans the `Pantry` model for items approaching their expiration threshold. It passes these high-priority items to `MealPlanningAgent`, which prioritizes them into upcoming meal plan slots to minimize food waste.
+
+---
+
+### F11 — Generate Shopping List
+* **Related Use Case:** UC11 — Generate Shopping List
+* **Related Sequence Diagram:** SD-11
+* **Classes involved:**
+  * `MealPlan` — supplies aggregated ingredient requirements.
+  * `Pantry` — provides current stock levels.
+  * `ShoppingListGenerator` — acts as an observer computing deficits.
+  * `ShoppingList` — stores the final consolidated procurement list.
+* **Important methods:**
+  * `MealPlan.getRequiredIngredients()`
+  * `ShoppingListGenerator.update()`
+  * `ShoppingListGenerator.compareAgainstPantry()`
+  * `ShoppingList.addItem()`
+* **Execution:** When requested, `ShoppingListGenerator` listens to `MealPlan` and `Pantry` state changes via the observer pattern. It compares required meal plan ingredients against available pantry inventory, filtering out items already in stock, and constructs a consolidated `ShoppingList`.
+
+---
+
+### F12 — Rate & Favorite Recipes
+* **Related Use Case:** UC12 — Rate & Favorite Recipes
+* **Related Sequence Diagram:** SD-02 *(Supporting)*
+* **Classes involved:**
+  * `RecipeController` — handles user rating and bookmark inputs.
+  * `RecipeRepository` — persists user preferences and ratings.
+  * `FavoriteList` — maintains the user's saved recipe collection.
+* **Important methods:**
+  * `RecipeController.saveFavorite()`
+  * `RecipeController.updateRating()`
+  * `RecipeRepository.persistBookmark()`
+* **Execution:** When a user favorites or rates a recipe, `RecipeController` captures the action. It updates the local collection and delegates persistence to `RecipeRepository`, ensuring saved recipes and scores are retained across application sessions.

@@ -226,7 +226,7 @@ The AI model interacts with the rest of the software system through a structured
 
 ## 2.1 Class Diagram
 
-#### Class Diagram: [`diagrams/MealMind_Class_Diagram.svg`](diagrams/MealMind_Class_Diagram.svg)
+#### Class Diagram: [`diagrams/MealMind_Class_Diagram.png`](diagrams/MealMind_Class_Diagram.png)
 
 ### Design Pattern Specifications
 
@@ -242,7 +242,7 @@ The `MealMind` architecture integrates 5 object-oriented design patterns to solv
 
 ## 2.2 Use Case Diagram and Descriptions
 
-#### Use Case Diagram: [`diagrams/MealMind_Use_Case_Diagram.svg`](diagrams/MealMind_Use_Case_Diagram.svg) 
+#### Use Case Diagram: [`diagrams/MealMind_Use_Case_Diagram.png`](diagrams/MealMind_Use_Case_Diagram.png) 
 
 ### Major Use Case Descriptions:
 
